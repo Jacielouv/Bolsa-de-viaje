@@ -1,354 +1,428 @@
-const story = {
-    2: {
-        text: "No son muchas las personas que se atreven a embarcarse en este viaje. Por no hablar de que quienes lo han hecho siguen explorando sin descanso y no encuentran su recompensa.",
-    },
-    3: {
-        text: "En los pueblos cuentan muchas historias sobre los peligros que acechan a los viajeros durante esta travesía, aunque la mayor parte son leyendas o habladurías. A los humanos les encanta imaginarse lo que se esconde más allá del horizonte de sus vidas, pero le temen a lo desconocido.",
-    },
-    4: {
-        text: "Por eso relatan historias fantásticas para que los demás sientan que su mundo es el único lugar seguro. Sin embargo, ocasionalmente, algunos como tú se atreven a desafiar a las historias y deciden ir más allá de sus miedos.",
-    },
-    5: {
-        text: "Como bien sabrás, en el pasado, mis compañeros de viaje y yo derrotamos al Rey Demonio. El tesoro que todo el mundo busca se encontraba en su poder.",
-    },
-    6: {
-        text: "Tras hacernos con él, decidimos que el tesoro debía continuar escondido. Las personas que quisieran saber cuál era deberían buscarlo por sí mismas. De lo contrario no serían dignas de su valor.",
-    },
+// equipamiento.js - gestión de diario, películas y juegos con Supabase o fallback localStorage
+(function () {
+    const qs = (s) => document.querySelector(s);
+    const qsa = (s) => Array.from(document.querySelectorAll(s));
 
-    7: {
-        text: "Ahora mismo soy la única que conoce el escondrijo del tesoro. Todos los aventureros que quieren comenzar este viaje acuden a mí para que les indique el camino a seguir.",
-    },
+    // Configuración de Supabase.
+    const SUPABASE_URL = 'https://dlmsnypnhiuzltvmtwne.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_b1vBrKF4shtjtMhFV8Bi5A_r0UHPgXB';
 
-    8: {
-        text: "Hacer eso, en cambio, significaría que el tesoro quedaría al alcance de cualquiera. Por ese motivo no puedo revelar cómo llegar hasta él.",
-    },
+    let supabase = null;
 
-    9: {
-        text: "Sin embargo, hay una cosa que puedo hacer por ti. Empezar este viaje en solitario es una tarea difícil, por lo que no puedo dejar que lo hagas sin ayuda.",
-    },
-
-    10: {
-        text: "Mi labor en esta travesía es unir a personas que deseen emprender el viaje y, por suerte, hace poco llegaron a mi puerta otros aventureros que esperan a alguien que los acompañe. Permíteme que te los presente.",
-    },
-
-    11: {
-        text: "Estos son Cielo, Ghumer y Michi, unos pequeños aventureros con mucho entusiasmo por explorar el mundo y encontrar el tesoro. ¿Te interesa acompañarlos en esta travesía?",
-    },
-
-    final: {
-        title: "La travesía continúa",
-        text: "Has llegado al borde del cielo y el tiempo parece detenerse un instante. ¿Deseas seguir caminando junto a la eternidad o detenerte para mirar el mundo con calma?",
-        options: [
-            { text: "Seguir adelante ✦", action: "accept" },
-            { text: "Quedarme un momento", action: "reject" }
-        ]
-    }
-};
-
-let userChoices = [];
-
-const initialDialogueText = "Hola, heroína. Te estaba esperando. Me han contado mucho sobre ti y tu interés por encontrar el tesoro más grande de nuestro mundo.";
-
-let dialogueIndex = 0;
-const dialogueTexts = [
-    initialDialogueText,
-    story[2].text,
-    story[3].text,
-    story[4].text,
-    story[5].text,
-    story[6].text,
-    story[7].text,
-    story[8].text,
-    story[9].text,
-    story[10].text,
-    story[11].text,
-    story.final.text
-];
-
-function typeText(element, text, speed = 12, callback) {
-    if (!element) return;
-    let index = 0;
-    element.innerHTML = '';
-
-    function step() {
-        element.innerHTML = `${text.slice(0, index + 1)}<span class="cursor"></span>`;
-        const currentChar = text.charAt(index);
-        index += 1;
-
-        if (index >= text.length) {
-            element.innerHTML = text;
-            if (callback) callback();
-            return;
-        }
-
-        const nextChar = text.charAt(index);
-        // Pausas: punto/exclamación -> pausa larga; coma -> pausa más corta
-        const longPause = 600; // ms for '.' and '!'
-        const shortPause = 350; // ms for ','
-        let delay = speed;
-
-        if ((currentChar === '.' || currentChar === '!') && nextChar === ' ') {
-            delay = longPause;
-        } else if (currentChar === ',' && nextChar === ' ') {
-            delay = shortPause;
-        }
-
-        setTimeout(step, delay);
+    if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('your-project-id') && !SUPABASE_ANON_KEY.includes('your-anon-key')) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
-    step();
-}
+    const isSupabaseReady = () => Boolean(supabase);
 
-function clearDialogueControls() {
-    const controls = document.getElementById('dialogue-controls');
-    if (controls) {
-        controls.innerHTML = '';
-    }
-}
-
-function showContinueButton() {
-    const controls = document.getElementById('dialogue-controls');
-    if (!controls || dialogueIndex >= dialogueTexts.length - 1) return;
-
-    setTimeout(() => {
-        if (dialogueIndex === 10) {
-            showCompanionChoice();
-            return;
-        }
-
-        controls.innerHTML = '<button id="continue-button" class="btn">Continuar</button>';
-        const continueButton = document.getElementById('continue-button');
-        if (continueButton) {
-            continueButton.onclick = () => {
-                clearDialogueControls();
-                dialogueIndex += 1;
-                displayDialogue(dialogueIndex);
-            };
-        }
-    }, 500);
-}
-
-function showCompanionChoice() {
-    const controls = document.getElementById('dialogue-controls');
-    if (!controls) return;
-
-    controls.innerHTML = `
-        <button id="yes-button" class="btn">Sí, por supuesto</button>
-        <button id="no-button" class="btn">No, ni de coña</button>
-    `;
-
-    const yesButton = document.getElementById('yes-button');
-    const noButton = document.getElementById('no-button');
-
-    if (yesButton) yesButton.onclick = () => handleCompanionAnswer(true);
-    if (noButton) noButton.onclick = () => moveButtonRandomly(noButton);
-
-    showCompanionImages(true);
-}
-
-function moveButtonRandomly(button) {
-    if (!button) return;
-
-    if (button.parentElement && button.parentElement !== document.body) {
-        document.body.appendChild(button);
-    }
-
-    const maxX = Math.max(window.innerWidth - button.offsetWidth - 20, 0);
-    const maxY = Math.max(window.innerHeight - button.offsetHeight - 20, 0);
-    const randomX = Math.floor(Math.random() * maxX) + 10;
-    const randomY = Math.floor(Math.random() * maxY) + 10;
-
-    button.style.position = 'fixed';
-    button.style.transition = 'left 0.35s ease, top 0.35s ease, transform 0.35s ease';
-    button.style.left = `${randomX}px`;
-    button.style.top = `${randomY}px`;
-    button.style.zIndex = '9999';
-    button.style.transform = 'translate(0, 0)';
-}
-
-function showEquipmentPrompt() {
-    hideCompanionImages();
-
-    const dialogueText = document.getElementById('dialogue-text');
-    const controls = document.getElementById('dialogue-controls');
-
-    if (controls) {
-        controls.innerHTML = '';
-    }
-
-    if (dialogueText) {
-        typeText(dialogueText, '¡Estupendo! Me alegro de que hayas aceptado a estos acompañantes. Vuestro viaje comenzará este viernes, día 7 de agosto. Os he preparado esta bolsa para la travesía. Espero que disfruteis de vuestra búsqueda del . . .  GUAN PIS', 30, () => {
-            if (!controls) return;
-            controls.innerHTML = '<button id="receive-bag-button" class="btn">Recibir bolsa</button>';
-            const receiveButton = document.getElementById('receive-bag-button');
-            if (receiveButton) {
-                receiveButton.onclick = () => {
-                    window.location.href = 'equipamiento.html';
-                };
-            }
+    function initTabs() {
+        qsa('.tab-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                qsa('.tab-btn').forEach((b) => b.classList.remove('active'));
+                qsa('.tab').forEach((t) => t.classList.remove('active'));
+                btn.classList.add('active');
+                const id = btn.dataset.tab;
+                qs(`#${id}`).classList.add('active');
+            });
         });
     }
-}
 
-function showCompanionImages(show) {
-    const imagesContainer = document.getElementById('companion-images');
-    if (!imagesContainer) return;
-
-    if (!show) {
-        imagesContainer.classList.add('hidden');
-        imagesContainer.innerHTML = '';
-        return;
+    function getLocalStorageItem(key) {
+        return JSON.parse(localStorage.getItem(key) || '[]');
     }
 
-    imagesContainer.classList.remove('hidden');
-    imagesContainer.innerHTML = `
-        <img src="imgs/Cielo.png" alt="Cielo">
-        <img src="imgs/Ghumer.png" alt="Ghumer">
-        <img src="imgs/Michi.png" alt="Michi">
-    `;
-}
-
-function handleCompanionAnswer(accepted) {
-    // If the 'no' button was moved to document.body, remove it explicitly
-    const noBtn = document.getElementById('no-button');
-    if (noBtn && noBtn.parentElement) {
-        noBtn.parentElement.removeChild(noBtn);
+    function setLocalStorageItem(key, value) {
+        localStorage.setItem(key, JSON.stringify(value));
     }
 
-    clearDialogueControls();
-    showCompanionImages(false);
-
-    if (accepted) {
-        showEquipmentPrompt();
-    }
-}
-
-function displayDialogue(index) {
-    const dialogueText = document.getElementById('dialogue-text');
-    if (!dialogueText) return;
-
-    if (index === 10) {
-        showCompanionImages(true);
-    } else {
-        hideCompanionImages();
+    function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+        });
     }
 
-    clearDialogueControls();
-    setTimeout(() => {
-        typeText(dialogueText, dialogueTexts[index], 30, showContinueButton);
-    }, 700);
-}
+    async function fetchFromSupabase(table) {
+        if (!isSupabaseReady()) return null;
 
-function hideCompanionImages() {
-    const imagesContainer = document.getElementById('companion-images');
-    if (imagesContainer) {
-        imagesContainer.classList.add('hidden');
-        imagesContainer.innerHTML = '';
-    }
-}
+        const orderBy = table === 'diary_entries' ? 'date' : 'title';
 
-function showInitialDialogue(delay = 2000) {
-    const dialogueBox = document.getElementById('dialogo');
-    if (!dialogueBox) return;
+        const query = supabase.from(table).select('*');
+        const { data, error } = await query.order(orderBy, { ascending: false });
 
-    dialogueIndex = 0;
-
-    setTimeout(() => {
-        dialogueBox.classList.add('visible');
-        setTimeout(() => {
-            displayDialogue(dialogueIndex);
-        }, 1500);
-    }, delay);
-}
-
-function startIntro() {
-    const introScreen = document.getElementById('intro-screen');
-    const gameStep = document.getElementById('game-step');
-    const introElement = document.getElementById('intro-text');
-    const ambientSound = document.getElementById('ambient-sound');
-
-    if (ambientSound) {
-        ambientSound.volume = 0.16;
-        ambientSound.play().catch(() => {});
-    }
-
-    if (introScreen && gameStep && introElement) {
-        introScreen.classList.remove('hidden');
-        gameStep.classList.add('hidden');
-
-        let index = 0;
-        const interval = setInterval(() => {
-            introElement.innerHTML = `${introText.slice(0, index)}<span class="cursor"></span>`;
-            index += 1;
-
-            if (index > introText.length) {
-                clearInterval(interval);
-                introElement.innerHTML = introText;
-                setTimeout(() => {
-                    introScreen.classList.add('hidden');
-                    gameStep.classList.remove('hidden');
-                    showInitialDialogue();
-                }, 1400);
-            }
-        }, 50);
-    } else {
-        showInitialDialogue();
-    }
-}
-
-window.addEventListener('load', startIntro);
-
-function nextStep(current, choice) {
-    if (choice) userChoices.push(choice);
-
-    if (current === 1) {
-        renderStep(story[2], 2);
-    } else if (current === 2) {
-        renderStep(story[3], 3);
-    } else if (current === 3) {
-        renderStep(story.final, 'final');
-    }
-}
-
-function renderStep(data, stepIndex) {
-    document.getElementById('step-title').innerText = data.title;
-    document.getElementById('step-text').innerText = data.text;
-
-    const optionsDiv = document.getElementById('options-container');
-    optionsDiv.innerHTML = '';
-
-    data.options.forEach(opt => {
-        const btn = document.createElement('button');
-        btn.className = 'btn';
-        btn.innerText = opt.text;
-
-        if (opt.action === 'accept') {
-            btn.onclick = () => showEnd(true);
-        } else if (opt.action === 'reject') {
-            btn.onclick = (e) => evadeNo(e.target);
-        } else {
-            btn.onclick = () => nextStep(stepIndex, opt.choice);
+        if (error) {
+            console.warn(`Supabase no pudo cargar ${table}:`, error.message || error);
+            return null;
         }
-        optionsDiv.appendChild(btn);
+
+        return data || [];
+    }
+
+    function renderDiaryEntries(entries) {
+        const container = qs('#diary-entries');
+        if (!container) return;
+
+        container.innerHTML = '';
+        const renderEntries = entries.slice().reverse();
+
+        renderEntries.forEach((entry) => {
+            const div = document.createElement('div');
+            div.className = 'entry';
+
+            const meta = document.createElement('div');
+            meta.className = 'entry-meta';
+
+            const dateLabel = document.createElement('div');
+            dateLabel.className = 'muted';
+            dateLabel.textContent = entry.date;
+
+            const actions = document.createElement('div');
+            actions.className = 'entry-actions';
+
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn';
+            editBtn.textContent = 'Editar';
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn alt';
+            deleteBtn.textContent = 'Eliminar';
+
+            actions.appendChild(editBtn);
+            actions.appendChild(deleteBtn);
+            meta.appendChild(dateLabel);
+            meta.appendChild(actions);
+
+            const textBlock = document.createElement('div');
+            textBlock.className = 'entry-text';
+            textBlock.innerHTML = (entry.text || '').replace(/\n/g, '<br>');
+
+            div.appendChild(meta);
+            div.appendChild(textBlock);
+
+            if (entry.image) {
+                const imageEl = document.createElement('img');
+                imageEl.className = 'entry-image';
+                imageEl.src = entry.image;
+                imageEl.alt = 'Imagen de la entrada';
+                div.appendChild(imageEl);
+            }
+
+            container.appendChild(div);
+
+            editBtn.addEventListener('click', async () => {
+                if (div.querySelector('.entry-edit-panel')) return;
+
+                const panel = document.createElement('div');
+                panel.className = 'entry-edit-panel';
+                panel.innerHTML = `
+                    <textarea class="entry-edit">${entry.text || ''}</textarea>
+                    <div class="entry-actions">
+                        <button class="btn save-entry">Guardar</button>
+                        <button class="btn alt cancel-entry">Cancelar</button>
+                    </div>
+                `;
+
+                div.appendChild(panel);
+                panel.querySelector('.cancel-entry').addEventListener('click', () => panel.remove());
+                panel.querySelector('.save-entry').addEventListener('click', async () => {
+                    const newText = panel.querySelector('.entry-edit').value.trim();
+                    if (!newText) return;
+
+                    if (isSupabaseReady()) {
+                        const { error } = await supabase
+                            .from('diary_entries')
+                            .update({ text: newText })
+                            .eq('id', entry.id);
+
+                        if (error) {
+                            console.error('Error editando entrada:', error);
+                            return;
+                        }
+                    } else {
+                        const localEntries = getLocalStorageItem('diaryEntries');
+                        const target = localEntries.find((item) => item.id === entry.id);
+                        if (target) {
+                            target.text = newText;
+                            setLocalStorageItem('diaryEntries', localEntries);
+                        }
+                    }
+
+                    loadDiary();
+                });
+            });
+
+            deleteBtn.addEventListener('click', async () => {
+                if (!confirm('Eliminar esta entrada del diario?')) return;
+
+                if (isSupabaseReady()) {
+                    const { error } = await supabase.from('diary_entries').delete().eq('id', entry.id);
+                    if (error) {
+                        console.error('Error eliminando entrada:', error);
+                        return;
+                    }
+                } else {
+                    const localEntries = getLocalStorageItem('diaryEntries').filter((item) => item.id !== entry.id);
+                    setLocalStorageItem('diaryEntries', localEntries);
+                }
+
+                loadDiary();
+            });
+        });
+    }
+
+    async function loadDiary() {
+        if (isSupabaseReady()) {
+            const data = await fetchFromSupabase('diary_entries');
+            if (data) {
+                renderDiaryEntries(data);
+                return;
+            }
+        }
+
+        const entries = getLocalStorageItem('diaryEntries');
+        renderDiaryEntries(entries);
+    }
+
+    async function saveDiary() {
+        const date = qs('#diary-date').value || new Date().toISOString().slice(0, 10);
+        const text = qs('#diary-text').value.trim();
+        if (!text) return;
+
+        const fileInput = qs('#diary-image');
+        const file = fileInput?.files?.[0];
+        let image = '';
+
+        if (file) {
+            try {
+                image = await readFileAsDataURL(file);
+            } catch (error) {
+                console.error('Error leyendo imagen del diario:', error);
+            }
+        }
+
+        const payload = { date, text, image };
+
+        if (isSupabaseReady()) {
+            const { error } = await supabase.from('diary_entries').insert([payload]);
+            if (error) {
+                console.error('Error guardando entrada en Supabase:', error);
+            }
+        } else {
+            const entries = getLocalStorageItem('diaryEntries');
+            entries.push({ id: crypto.randomUUID(), ...payload });
+            setLocalStorageItem('diaryEntries', entries);
+        }
+
+        qs('#diary-text').value = '';
+        if (fileInput) fileInput.value = '';
+        loadDiary();
+    }
+
+    async function clearDiary() {
+        if (!confirm('Borrar todas las entradas del diario?')) return;
+
+        if (isSupabaseReady()) {
+            const { error } = await supabase.from('diary_entries').delete().not('id', 'is', null);
+            if (error) {
+                console.error('Error borrando entradas:', error);
+                return;
+            }
+        } else {
+            setLocalStorageItem('diaryEntries', []);
+        }
+
+        loadDiary();
+    }
+
+    async function loadItems(key, listSelector) {
+        const container = qs(listSelector);
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        if (isSupabaseReady()) {
+            const table = key;
+            const data = await fetchFromSupabase(table);
+            if (data) {
+                renderItems(data, key, container);
+                return;
+            }
+        }
+
+        const items = getLocalStorageItem(key);
+        renderItems(items, key, container);
+    }
+
+    function renderItems(items, key, container) {
+        items.forEach((it, index) => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+
+            const img = document.createElement('img');
+            img.src = it.image || 'imgs/placeholder.png';
+            img.alt = it.title;
+
+            const info = document.createElement('div');
+            info.className = 'item-info';
+            info.innerHTML = `
+                <h3>${it.title}</h3>
+                <div class="muted">Valoración: <span class="rating">${it.rating || '—'}</span></div>
+                <p>${it.review || ''}</p>
+            `;
+
+            const actions = document.createElement('div');
+            actions.className = 'item-actions';
+
+            const reviewBtn = document.createElement('button');
+            reviewBtn.className = 'btn';
+            reviewBtn.textContent = 'Reseñar';
+
+            reviewBtn.addEventListener('click', async () => {
+                const open = container.querySelectorAll('.review-panel');
+                open.forEach((panel) => panel.remove());
+
+                if (card.querySelector('.review-panel')) {
+                    card.querySelector('.review-panel').remove();
+                    return;
+                }
+
+                const panel = document.createElement('div');
+                panel.className = 'review-panel';
+                panel.innerHTML = `
+                    <textarea class="review-input" placeholder="Escribe tu reseña...">${it.review || ''}</textarea>
+                    <div class="review-controls">
+                        <input type="number" min="1" max="5" class="review-rating" value="${it.rating || ''}" placeholder="Valoración (1-5)">
+                        <div class="row">
+                            <button class="btn save-review">Guardar</button>
+                            <button class="btn alt cancel-review">Cancelar</button>
+                        </div>
+                    </div>
+                `;
+
+                info.appendChild(panel);
+
+                panel.querySelector('.cancel-review').addEventListener('click', () => panel.remove());
+                panel.querySelector('.save-review').addEventListener('click', async () => {
+                    const newReview = panel.querySelector('.review-input').value.trim();
+                    const newRating = panel.querySelector('.review-rating').value.trim();
+
+                    if (isSupabaseReady()) {
+                        const { error } = await supabase
+                            .from(key)
+                            .update({ review: newReview, rating: newRating })
+                            .eq('id', it.id);
+
+                        if (error) {
+                            console.error('Error actualizando reseña:', error);
+                            return;
+                        }
+                    } else {
+                        const itemsAll = getLocalStorageItem(key);
+                        itemsAll[index] = { ...itemsAll[index], review: newReview, rating: newRating };
+                        setLocalStorageItem(key, itemsAll);
+                    }
+
+                    loadItems(key, `#${key === 'movies' ? 'movies-list' : 'games-list'}`);
+                });
+            });
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn alt';
+            delBtn.textContent = 'Eliminar';
+
+            delBtn.addEventListener('click', async () => {
+                if (!confirm('Eliminar este elemento?')) return;
+
+                if (isSupabaseReady()) {
+                    const { error } = await supabase.from(key).delete().eq('id', it.id);
+                    if (error) {
+                        console.error('Error eliminando elemento:', error);
+                        return;
+                    }
+                } else {
+                    const itemsAll = getLocalStorageItem(key).filter((item) => item.id !== it.id);
+                    setLocalStorageItem(key, itemsAll);
+                }
+
+                loadItems(key, `#${key === 'movies' ? 'movies-list' : 'games-list'}`);
+            });
+
+            actions.appendChild(reviewBtn);
+            actions.appendChild(delBtn);
+            card.appendChild(img);
+            card.appendChild(info);
+            info.appendChild(actions);
+            container.appendChild(card);
+        });
+    }
+
+    async function addItemFromForm(formSelector, key, fields) {
+        const form = qs(formSelector);
+        const title = form.querySelector(fields.title).value.trim();
+        if (!title) return;
+
+        const image = form.querySelector(fields.image).value.trim();
+        const review = form.querySelector(fields.review).value.trim();
+        const rating = form.querySelector(fields.rating).value.trim();
+
+        const payload = { title, image, review, rating };
+
+        if (isSupabaseReady()) {
+            const { error } = await supabase.from(key).insert([payload]);
+            if (error) {
+                console.error('Error guardando elemento en Supabase:', error);
+            }
+        } else {
+            const items = getLocalStorageItem(key);
+            items.push({ id: crypto.randomUUID(), ...payload });
+            setLocalStorageItem(key, items);
+        }
+
+        form.reset();
+        loadItems(key, fields.listSelector);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initTabs();
+
+        if (qs('#save-diary')) {
+            qs('#save-diary').addEventListener('click', saveDiary);
+        }
+
+        if (qs('#clear-diary')) {
+            qs('#clear-diary').addEventListener('click', clearDiary);
+        }
+
+        if (qs('#movie-form')) {
+            qs('#movie-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                addItemFromForm('#movie-form', 'movies', {
+                    title: '#movie-title',
+                    image: '#movie-poster',
+                    review: '#movie-review',
+                    rating: '#movie-rating',
+                    listSelector: '#movies-list'
+                });
+            });
+        }
+
+        if (qs('#game-form')) {
+            qs('#game-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                addItemFromForm('#game-form', 'games', {
+                    title: '#game-title',
+                    image: '#game-cover',
+                    review: '#game-review',
+                    rating: '#game-rating',
+                    listSelector: '#games-list'
+                });
+            });
+        }
+
+        loadDiary();
+        loadItems('movies', '#movies-list');
+        loadItems('games', '#games-list');
     });
-}
-
-function evadeNo(button) {
-    const phrases = [
-        "El tiempo no se apresura...",
-        "La calma de Frieren aún no ha terminado.",
-        "Intenta una vez más, con paciencia.",
-        "La travesía sigue llamando."
-    ];
-    const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
-    button.innerText = randomPhrase;
-}
-
-function showEnd(accepted) {
-    const container = document.getElementById('game-step');
-    container.innerHTML = `
-        <h2>✦ La travesía continúa ✦</h2>
-        <p class="narrative">El cielo se abre y la historia sigue avanzando. Frieren camina con serenidad, y el mundo se vuelve más claro con cada paso.</p>
-        <p class="final-message">El viaje nunca termina, solo cambia de forma.</p>
-    `;
-}
+})();
