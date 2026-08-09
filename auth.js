@@ -1,8 +1,8 @@
 (function () {
     const AUTH_STORAGE_KEY = 'travel-app-auth';
     const AUTH_USERS = {
-        cielo: { password: 'viaje2026' },
-        michi: { password: 'viaje2026' }
+        cielo: { password: 'nuestra-bolsa-de-viaje-2026' },
+        iria: { password: 'nuestra-bolsa-de-viaje-2026' }
     };
 
     const authScreen = document.getElementById('auth-screen');
@@ -65,6 +65,19 @@
         }
         showAuth();
     }
+
+    // Helper global para consultar el usuario actual desde otros scripts
+    window.getCurrentUser = function () {
+        try {
+            const saved = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || 'null');
+            if (saved?.authenticated && AUTH_USERS[saved.username]) {
+                return saved.username;
+            }
+        } catch (e) {
+            return null;
+        }
+        return null;
+    };
 
     if (authForm) {
         authForm.addEventListener('submit', (event) => {

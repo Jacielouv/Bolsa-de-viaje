@@ -29,9 +29,6 @@ const story = {
     11: {
         text: "Estos son Cielo, Ghumer y Michi, pequeños aventureros con mucho entusiasmo por explorar el mundo y encontrar el tesoro. ¿Te interesa acompañarlos?"
     },
-    final: {
-        text: "Has llegado al borde del cielo y el tiempo parece detenerse un instante. ¿Deseas seguir caminando junto a la eternidad o detenerte para mirar el mundo con calma?"
-    }
 };
 
 const initialDialogueText = "Hola, heroína. Te estaba esperando. Me han contado mucho sobre ti y tu interés por encontrar el tesoro más grande de nuestro mundo.";
@@ -49,7 +46,6 @@ const dialogueTexts = [
     story[9].text,
     story[10].text,
     story[11].text,
-    story.final.text
 ];
 
 // Escribe el texto con efecto de máquina de escribir y pausas suaves.
@@ -183,7 +179,7 @@ function showEquipmentPrompt() {
 
                 if (receiveButton) {
                     receiveButton.onclick = () => {
-                        window.location.href = 'equipamiento.html';
+                        window.location.href = 'index.html';
                     };
                 }
             }

@@ -4,74 +4,94 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
     <title>Bolsa de viaje</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header class="site-header">
-        <h1>Bolsa de viaje</h1>
-        <nav class="tabs">
-            <button class="tab-btn active" data-tab="inicio">Inicio</button>
-            <button class="tab-btn" data-tab="diario">Diario</button>
-            <button class="tab-btn" data-tab="peliculas">Películas</button>
-            <button class="tab-btn" data-tab="juegos">Videojuegos</button>
-            <a class="tab-btn" href="frieren.html">Frieren</a>
-        </nav>
-    </header>
 
-    <main class="container">
-        <section id="inicio" class="tab active">
-            <h2>Inicio</h2>
-            <div class="welcome-panel">
-                <p>¡Bienvenidos, aventureros! Esta es vuestra bolsa de viaje, En ella encontrareis todo lo que necesitais para vuestra travesía, además de poder añadir vuestras experiencias y objetivos.</p>
-                <p>¡Disfrutad del camino en compañía!</p>
-                <img src="imgs/GUAN_PIS.png" alt="Guan Pis" class="welcome-image">
-            </div>
-        </section>
+    <!-- Pantalla de Inicio de Sesión -->
+    <section id="auth-screen">
+        <div class="auth-card">
+            <h2>Iniciar Sesión</h2>
+            <form id="auth-form">
+                <input type="text" id="auth-username" placeholder="Usuario" required>
+                <input type="password" id="auth-password" placeholder="Contraseña" required>
+                <button type="submit" class="btn">Entrar</button>
+            </form>
+            <p id="auth-message"></p>
+        </div>
+    </section>
 
-        <section id="diario" class="tab">
-            <h2>Diario de Viaje</h2>
-            <div class="diary-panel">
-                <input type="date" id="diary-date">
-                <textarea id="diary-text" placeholder="Escribe una entrada..."></textarea>
-                <label class="file-label">
-                    <span>Subir imagen para esta entrada</span>
-                    <input type="file" id="diary-image" accept="image/*">
-                </label>
-                <div class="row">
-                    <button id="save-diary" class="btn">Guardar entrada</button>
-                    <button id="clear-diary" class="btn alt">Borrar todo</button>
+    <!-- Contenido Principal de la Aplicación -->
+    <div id="app-shell" hidden>
+        <header class="site-header">
+            <h1>Bolsa de viaje</h1>
+            <nav class="tabs">
+                <button class="tab-btn active" data-tab="inicio">Inicio</button>
+                <button class="tab-btn" data-tab="diario">Diario</button>
+                <button class="tab-btn" data-tab="peliculas">Películas</button>
+                <button class="tab-btn" data-tab="juegos">Videojuegos</button>
+                <a class="tab-btn" href="frieren.html">Frieren</a>
+                <button id="logout-btn" class="btn alt" hidden>Cerrar Sesión</button>
+            </nav>
+        </header>
+
+        <main class="container">
+            <section id="inicio" class="tab active">
+                <h2>Inicio</h2>
+                <div class="welcome-panel">
+                    <p>¡Bienvenidos, aventureros! Esta es vuestra bolsa de viaje, En ella encontrareis todo lo que necesitais para vuestra travesía, además de poder añadir vuestras experiencias y objetivos.</p>
+                    <p>¡Disfrutad del camino en compañía!</p>
+                    <img src="imgs/GUAN_PIS.png" alt="Guan Pis" class="welcome-image">
                 </div>
-            </div>
-            <div id="diary-entries" class="entries"></div>
-        </section>
+            </section>
 
-        <section id="peliculas" class="tab">
-            <h2>Lista de Películas</h2>
-            <form id="movie-form" class="item-form">
-                <input type="text" id="movie-title" placeholder="Título" required>
-                <input type="text" id="movie-poster" placeholder="URL de carátula (opcional)">
-                <textarea id="movie-review" placeholder="Reseña inicial (opcional)"></textarea>
-                <input type="number" id="movie-rating" min="1" max="5" placeholder="Valoración (1-5)">
-                <button class="btn" type="submit">Añadir película</button>
-            </form>
-            <div id="movies-list" class="items-grid"></div>
-        </section>
+            <section id="diario" class="tab">
+                <h2>Diario de Viaje</h2>
+                <div class="diary-panel">
+                    <input type="date" id="diary-date">
+                    <textarea id="diary-text" placeholder="Escribe una entrada..."></textarea>
+                    <label class="file-label">
+                        <span>Subir imagen para esta entrada</span>
+                        <input type="file" id="diary-image" accept="image/*">
+                    </label>
+                    <div class="row">
+                        <button id="save-diary" class="btn">Guardar entrada</button>
+                        <button id="clear-diary" class="btn alt">Borrar todo</button>
+                    </div>
+                </div>
+                <div id="diary-entries" class="entries"></div>
+            </section>
 
-        <section id="juegos" class="tab">
-            <h2>Lista de Videojuegos</h2>
-            <form id="game-form" class="item-form">
-                <input type="text" id="game-title" placeholder="Título" required>
-                <input type="text" id="game-cover" placeholder="URL de carátula (opcional)">
-                <textarea id="game-review" placeholder="Reseña inicial (opcional)"></textarea>
-                <input type="number" id="game-rating" min="1" max="5" placeholder="Valoración (1-5)">
-                <button class="btn" type="submit">Añadir juego</button>
-            </form>
-            <div id="games-list" class="items-grid"></div>
-        </section>
-    </main>
+            <section id="peliculas" class="tab">
+                <h2>Lista de Películas</h2>
+                <form id="movie-form" class="item-form">
+                    <input type="text" id="movie-title" placeholder="Título" required>
+                    <input type="text" id="movie-poster" placeholder="URL de carátula (opcional)">
+                    <textarea id="movie-review" placeholder="Reseña inicial (opcional)"></textarea>
+                    <input type="number" id="movie-rating" min="1" max="5" placeholder="Valoración (1-5)">
+                    <button class="btn" type="submit">Añadir película</button>
+                </form>
+                <div id="movies-list" class="items-grid"></div>
+            </section>
+
+            <section id="juegos" class="tab">
+                <h2>Lista de Videojuegos</h2>
+                <form id="game-form" class="item-form">
+                    <input type="text" id="game-title" placeholder="Título" required>
+                    <input type="text" id="game-cover" placeholder="URL de carátula (opcional)">
+                    <textarea id="game-review" placeholder="Reseña inicial (opcional)"></textarea>
+                    <input type="number" id="game-rating" min="1" max="5" placeholder="Valoración (1-5)">
+                    <button class="btn" type="submit">Añadir juego</button>
+                </form>
+                <div id="games-list" class="items-grid"></div>
+            </section>
+        </main>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
