@@ -1,63 +1,16 @@
-// equipamiento.js - gestión de diario, películas y juegos con Supabase o fallback localStorage
+// script.js - gestión de diario, películas y juegos con backend PHP
 (function () {
     const qs = (s) => document.querySelector(s);
-    const qsa = (s) => Array.from(document.querySelectorAll(s));
 
-    // Configuración de Supabase.
-    const SUPABASE_URL = 'https://dlmsnypnhiuzltvmtwne.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_b1vBrKF4shtjtMhFV8Bi5A_r0UHPgXB';
-
-    let supabase = null;
-
-    if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('your-project-id') && !SUPABASE_ANON_KEY.includes('your-anon-key')) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    }
-
-    const isSupabaseReady = () => Boolean(supabase);
-
-    function initTabs() {
-        qsa('.tab-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                qsa('.tab-btn').forEach((b) => b.classList.remove('active'));
-                qsa('.tab').forEach((t) => t.classList.remove('active'));
-                btn.classList.add('active');
-                const id = btn.dataset.tab;
-                qs(`#${id}`).classList.add('active');
-            });
-        });
-    }
-
-    function getLocalStorageItem(key) {
-        return JSON.parse(localStorage.getItem(key) || '[]');
-    }
-
-    function setLocalStorageItem(key, value) {
-        localStorage.setItem(key, JSON.stringify(value));
-    }
-
-    function readFileAsDataURL(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(file);
-        });
-    }
-
-    async function fetchFromSupabase(table) {
-        if (!isSupabaseReady()) return null;
-
-        const orderBy = table === 'diary_entries' ? 'date' : 'title';
-
-        const query = supabase.from(table).select('*');
-        const { data, error } = await query.order(orderBy, { ascending: false });
-
-        if (error) {
-            console.warn(`Supabase no pudo cargar ${table}:`, error.message || error);
-            return null;
+    async function api(table, method = 'GET', body = null) {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body) opts.body = JSON.stringify(body);
+        const res = await fetch(`api/${table}.php`, opts);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Error desconocido' }));
+            throw new Error(err.error || `Error ${res.status}`);
         }
-
-        return data || [];
+        return res.json();
     }
 
     function renderDiaryEntries(entries) {
@@ -65,9 +18,8 @@
         if (!container) return;
 
         container.innerHTML = '';
-        const renderEntries = entries.slice().reverse();
 
-        renderEntries.forEach((entry) => {
+        entries.forEach((entry) => {
             const div = document.createElement('div');
             div.className = 'entry';
 
@@ -101,17 +53,17 @@
             div.appendChild(meta);
             div.appendChild(textBlock);
 
-            if (entry.image) {
+            if (entry.image_path) {
                 const imageEl = document.createElement('img');
                 imageEl.className = 'entry-image';
-                imageEl.src = entry.image;
+                imageEl.src = entry.image_path;
                 imageEl.alt = 'Imagen de la entrada';
                 div.appendChild(imageEl);
             }
 
             container.appendChild(div);
 
-            editBtn.addEventListener('click', async () => {
+            editBtn.addEventListener('click', () => {
                 if (div.querySelector('.entry-edit-panel')) return;
 
                 const panel = document.createElement('div');
@@ -130,59 +82,35 @@
                     const newText = panel.querySelector('.entry-edit').value.trim();
                     if (!newText) return;
 
-                    if (isSupabaseReady()) {
-                        const { error } = await supabase
-                            .from('diary_entries')
-                            .update({ text: newText })
-                            .eq('id', entry.id);
-
-                        if (error) {
-                            console.error('Error editando entrada:', error);
-                            return;
-                        }
-                    } else {
-                        const localEntries = getLocalStorageItem('diaryEntries');
-                        const target = localEntries.find((item) => item.id === entry.id);
-                        if (target) {
-                            target.text = newText;
-                            setLocalStorageItem('diaryEntries', localEntries);
-                        }
+                    try {
+                        await api('diary', 'PUT', { id: entry.id, text: newText });
+                        loadDiary();
+                    } catch (e) {
+                        console.error('Error editando entrada:', e);
                     }
-
-                    loadDiary();
                 });
             });
 
             deleteBtn.addEventListener('click', async () => {
                 if (!confirm('Eliminar esta entrada del diario?')) return;
 
-                if (isSupabaseReady()) {
-                    const { error } = await supabase.from('diary_entries').delete().eq('id', entry.id);
-                    if (error) {
-                        console.error('Error eliminando entrada:', error);
-                        return;
-                    }
-                } else {
-                    const localEntries = getLocalStorageItem('diaryEntries').filter((item) => item.id !== entry.id);
-                    setLocalStorageItem('diaryEntries', localEntries);
+                try {
+                    await api('diary', 'DELETE', { id: entry.id });
+                    loadDiary();
+                } catch (e) {
+                    console.error('Error eliminando entrada:', e);
                 }
-
-                loadDiary();
             });
         });
     }
 
     async function loadDiary() {
-        if (isSupabaseReady()) {
-            const data = await fetchFromSupabase('diary_entries');
-            if (data) {
-                renderDiaryEntries(data);
-                return;
-            }
+        try {
+            const entries = await api('diary');
+            renderDiaryEntries(entries);
+        } catch (e) {
+            console.error('Error cargando diario:', e);
         }
-
-        const entries = getLocalStorageItem('diaryEntries');
-        renderDiaryEntries(entries);
     }
 
     async function saveDiary() {
@@ -202,66 +130,57 @@
             }
         }
 
-        const payload = { date, text, image };
-
-        if (isSupabaseReady()) {
-            const { error } = await supabase.from('diary_entries').insert([payload]);
-            if (error) {
-                console.error('Error guardando entrada en Supabase:', error);
-            }
-        } else {
-            const entries = getLocalStorageItem('diaryEntries');
-            entries.push({ id: crypto.randomUUID(), ...payload });
-            setLocalStorageItem('diaryEntries', entries);
+        try {
+            await api('diary', 'POST', { date, text, image });
+            qs('#diary-text').value = '';
+            if (fileInput) fileInput.value = '';
+            loadDiary();
+        } catch (e) {
+            console.error('Error guardando entrada:', e);
         }
+    }
 
-        qs('#diary-text').value = '';
-        if (fileInput) fileInput.value = '';
-        loadDiary();
+    function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+        });
     }
 
     async function clearDiary() {
         if (!confirm('Borrar todas las entradas del diario?')) return;
 
-        if (isSupabaseReady()) {
-            const { error } = await supabase.from('diary_entries').delete().not('id', 'is', null);
-            if (error) {
-                console.error('Error borrando entradas:', error);
-                return;
-            }
-        } else {
-            setLocalStorageItem('diaryEntries', []);
+        try {
+            await api('diary', 'DELETE', { delete_all: true });
+            loadDiary();
+        } catch (e) {
+            console.error('Error borrando entradas:', e);
         }
-
-        loadDiary();
     }
 
     async function loadItems(key, listSelector) {
         const container = qs(listSelector);
         if (!container) return;
 
-        container.innerHTML = '';
-
-        if (isSupabaseReady()) {
-            const table = key;
-            const data = await fetchFromSupabase(table);
-            if (data) {
-                renderItems(data, key, container);
-                return;
-            }
+        try {
+            const items = await api(key);
+            renderItems(items, key, container);
+        } catch (e) {
+            console.error(`Error cargando ${key}:`, e);
         }
-
-        const items = getLocalStorageItem(key);
-        renderItems(items, key, container);
     }
 
     function renderItems(items, key, container) {
-        items.forEach((it, index) => {
+        container.innerHTML = '';
+
+        items.forEach((it) => {
             const card = document.createElement('div');
             card.className = 'item-card';
 
             const img = document.createElement('img');
-            img.src = it.image || 'imgs/placeholder.png';
+            img.src = it.image || 'https://placehold.co/340x260/0b1220/9aa4b2?text=Sin+imagen';
             img.alt = it.title;
 
             const info = document.createElement('div');
@@ -279,9 +198,8 @@
             reviewBtn.className = 'btn';
             reviewBtn.textContent = 'Reseñar';
 
-            reviewBtn.addEventListener('click', async () => {
-                const open = container.querySelectorAll('.review-panel');
-                open.forEach((panel) => panel.remove());
+            reviewBtn.addEventListener('click', () => {
+                container.querySelectorAll('.review-panel').forEach((p) => p.remove());
 
                 if (card.querySelector('.review-panel')) {
                     card.querySelector('.review-panel').remove();
@@ -308,23 +226,12 @@
                     const newReview = panel.querySelector('.review-input').value.trim();
                     const newRating = panel.querySelector('.review-rating').value.trim();
 
-                    if (isSupabaseReady()) {
-                        const { error } = await supabase
-                            .from(key)
-                            .update({ review: newReview, rating: newRating })
-                            .eq('id', it.id);
-
-                        if (error) {
-                            console.error('Error actualizando reseña:', error);
-                            return;
-                        }
-                    } else {
-                        const itemsAll = getLocalStorageItem(key);
-                        itemsAll[index] = { ...itemsAll[index], review: newReview, rating: newRating };
-                        setLocalStorageItem(key, itemsAll);
+                    try {
+                        await api(key, 'PUT', { id: it.id, review: newReview, rating: newRating });
+                        loadItems(key, `#${key === 'movies' ? 'movies-list' : 'games-list'}`);
+                    } catch (e) {
+                        console.error('Error actualizando reseña:', e);
                     }
-
-                    loadItems(key, `#${key === 'movies' ? 'movies-list' : 'games-list'}`);
                 });
             });
 
@@ -335,18 +242,12 @@
             delBtn.addEventListener('click', async () => {
                 if (!confirm('Eliminar este elemento?')) return;
 
-                if (isSupabaseReady()) {
-                    const { error } = await supabase.from(key).delete().eq('id', it.id);
-                    if (error) {
-                        console.error('Error eliminando elemento:', error);
-                        return;
-                    }
-                } else {
-                    const itemsAll = getLocalStorageItem(key).filter((item) => item.id !== it.id);
-                    setLocalStorageItem(key, itemsAll);
+                try {
+                    await api(key, 'DELETE', { id: it.id });
+                    loadItems(key, `#${key === 'movies' ? 'movies-list' : 'games-list'}`);
+                } catch (e) {
+                    console.error('Error eliminando elemento:', e);
                 }
-
-                loadItems(key, `#${key === 'movies' ? 'movies-list' : 'games-list'}`);
             });
 
             actions.appendChild(reviewBtn);
@@ -367,26 +268,16 @@
         const review = form.querySelector(fields.review).value.trim();
         const rating = form.querySelector(fields.rating).value.trim();
 
-        const payload = { title, image, review, rating };
-
-        if (isSupabaseReady()) {
-            const { error } = await supabase.from(key).insert([payload]);
-            if (error) {
-                console.error('Error guardando elemento en Supabase:', error);
-            }
-        } else {
-            const items = getLocalStorageItem(key);
-            items.push({ id: crypto.randomUUID(), ...payload });
-            setLocalStorageItem(key, items);
+        try {
+            await api(key, 'POST', { title, image, review, rating });
+            form.reset();
+            loadItems(key, fields.listSelector);
+        } catch (e) {
+            console.error(`Error guardando ${key}:`, e);
         }
-
-        form.reset();
-        loadItems(key, fields.listSelector);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        initTabs();
-
         if (qs('#save-diary')) {
             qs('#save-diary').addEventListener('click', saveDiary);
         }
@@ -421,8 +312,8 @@
             });
         }
 
-        loadDiary();
-        loadItems('movies', '#movies-list');
-        loadItems('games', '#games-list');
+        if (qs('#diary-entries')) loadDiary();
+        if (qs('#movies-list')) loadItems('movies', '#movies-list');
+        if (qs('#games-list')) loadItems('games', '#games-list');
     });
 })();

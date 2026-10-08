@@ -179,7 +179,7 @@ function showEquipmentPrompt() {
 
                 if (receiveButton) {
                     receiveButton.onclick = () => {
-                        window.location.href = 'index.html';
+                        window.location.href = 'inicio.php';
                     };
                 }
             }
